@@ -11,24 +11,22 @@ class LoginRequest(BaseModel):
 
 class LoginResponse(BaseModel):
     success: bool
-    student_id: str
-    name: str
+    message: str
+    student: Optional[dict] = None
 
 
 class CheckinRequest(BaseModel):
-    nfc_uid: str
-    seat_no: int
+    uid: str
+    seat_id: str
 
 
 class CheckinResponse(BaseModel):
     success: bool
     message: str
-    student_id: str
-    seat_no: int
 
 
 class LeaveRequest(BaseModel):
-    student_id: str
+    seat_id: str
 
 
 class BasicResponse(BaseModel):
@@ -37,30 +35,31 @@ class BasicResponse(BaseModel):
 
 
 class NoiseRequest(BaseModel):
-    seat_no: int
+    seat_id: str
     noise_value: int
 
 
 class NoiseResponse(BaseModel):
     success: bool
-    level: str
     warning: bool
+    message: str
 
 
 class SeatResponse(BaseModel):
-    seat_no: int
+    seat_id: str
     status: str
-    student_id: Optional[str]
-    updated_at: Optional[datetime]
+    student_id: Optional[str] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
 
 
 class LatestNoiseResponse(BaseModel):
-    seat_no: Optional[int]
+    id: int
+    seat_id: Optional[str]
     noise_value: int
-    level: str
+    is_warning: bool
     created_at: datetime
 
     class Config:

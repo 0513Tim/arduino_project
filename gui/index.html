@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Study Room System</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div>
+        <p class="app-tag">Smart Study Room System</p>
+        <h1>智慧自習室系統</h1>
+      </div>
+      <div class="hint-card">
+        <p class="hint-title">測試帳號</p>
+        <p>A001 / 1234</p>
+        <p>A002 / 1234</p>
+        <p>A003 / 1234</p>
+      </div>
+    </header>
+
+    <main>
+      <section class="card login-card">
+        <h2>使用者登入</h2>
+        <form id="login-form">
+          <label>
+            學號
+            <input type="text" id="student-id" placeholder="A001" required />
+          </label>
+          <label>
+            密碼
+            <input type="password" id="password" placeholder="1234" required />
+          </label>
+          <button type="submit" class="primary-btn">登入</button>
+        </form>
+        <p id="login-message" class="feedback"></p>
+        <p id="login-name" class="login-name"></p>
+      </section>
+
+      <section class="card seat-card">
+        <div class="section-header">
+          <div>
+            <h2>座位狀態</h2>
+            <p id="selected-seat">目前選擇座位：無</p>
+          </div>
+          <div class="button-group">
+            <button id="refresh-seats" class="secondary-btn">重新整理座位</button>
+            <button id="leave-button" class="danger-btn">直接離席</button>
+          </div>
+        </div>
+        <div id="seat-grid" class="seat-grid"></div>
+      </section>
+
+      <section class="card noise-card">
+        <div class="section-header">
+          <h2>最新噪音</h2>
+          <button id="refresh-noise" class="secondary-btn">更新噪音</button>
+        </div>
+        <div class="noise-info">
+          <p>座位編號：<span id="noise-seat">-</span></p>
+          <p>噪音值：<span id="noise-value">-</span></p>
+          <p>狀態：<span id="noise-status" class="noise-status">尚無資料</span></p>
+        </div>
+      </section>
+
+      <section class="card api-card">
+        <h2>API 使用說明</h2>
+        <p>後端 API Base URL：<strong>http://127.0.0.1:8000</strong></p>
+        <ul>
+          <li>POST /login</li>
+          <li>GET /seats</li>
+          <li>POST /leave</li>
+          <li>GET /latest_noise</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

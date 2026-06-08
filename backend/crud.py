@@ -4,120 +4,118 @@ from sqlalchemy.orm import Session
 from models import LeaveLog, NoiseLog, Seat, Student
 
 
-def seed_data(db: Session) -> None:
-    students = [
-        Student(student_id="111410001", name="王小明", password="1234", nfc_uid="A35F2911"),
-        Student(student_id="111410002", name="陳小華", password="1234", nfc_uid="B24C8832"),
-        Student(student_id="111410003", name="林大安", password="1234", nfc_uid="C91D782A"),
-    ]
-    for student in students:
-        if db.get(Student, student.student_id) is None:
-            db.add(student)
-
-    for seat_no in range(1, 5):
-        if db.get(Seat, seat_no) is None:
-            db.add(Seat(seat_no=seat_no, status="available"))
-
-    db.commit()
+NOISE_LIMIT = 700
 
 
 def login_student(db: Session, student_id: str, password: str):
-    stmt = select(Student).where(Student.student_id == student_id, Student.password == password)
+    """查詢學生並驗證密碼"""
+    stmt = select(Student).where(
+        Student.student_id == student_id,
+        Student.password == password
+    )
     return db.execute(stmt).scalar_one_or_none()
 
 
-def get_student_by_nfc(db: Session, nfc_uid: str):
-    stmt = select(Student).where(Student.nfc_uid == nfc_uid)
+def get_student_by_uid(db: Session, uid: str):
+    """用 UID 查詢學生"""
+    stmt = select(Student).where(Student.uid == uid)
     return db.execute(stmt).scalar_one_or_none()
 
 
-def get_seat(db: Session, seat_no: int):
-    return db.get(Seat, seat_no)
+def get_seat(db: Session, seat_id: str):
+    """取得座位資訊"""
+    return db.get(Seat, seat_id)
 
 
-def get_student_active_seat(db: Session, student_id: str):
-    stmt = select(Seat).where(Seat.student_id == student_id, Seat.status.in_(("using", "warning", "away")))
-    return db.execute(stmt).scalar_one_or_none()
+def list_all_seats(db: Session):
+    """列出所有座位，依 seat_id 排序"""
+    stmt = select(Seat).order_by(Seat.seat_id)
+    return db.execute(stmt).scalars().all()
 
 
-def checkin_student(db: Session, nfc_uid: str, seat_no: int):
-    student = get_student_by_nfc(db, nfc_uid)
-    if student is None:
-        return None, "student not found"
+def checkin_student(db: Session, uid: str, seat_id: str):
+    """
+    ESP32 NFC 刷卡報到流程
+    """
+    # 用 uid 查 students
+    student = get_student_by_uid(db, uid)
+    if not student:
+        return None, "學生不存在"
 
-    seat = get_seat(db, seat_no)
-    if seat is None:
-        return None, "seat not found"
+    # 檢查 seat_id 是否存在
+    seat = get_seat(db, seat_id)
+    if not seat:
+        return None, "座位不存在"
 
-    if seat.status != "available":
-        return None, "seat is not available"
+    # 檢查座位狀態是否為 empty
+    if seat.status != "empty":
+        return None, "座位已被佔用"
 
-    current_seat = get_student_active_seat(db, student.student_id)
-    if current_seat is not None:
-        return None, "student already occupies a seat"
-
+    # 更新座位狀態
     seat.status = "using"
     seat.student_id = student.student_id
     db.commit()
     db.refresh(seat)
-    return {"student_id": student.student_id, "seat_no": seat.seat_no}, None
+
+    return {"seat_id": seat.seat_id, "student_id": student.student_id}, None
 
 
-def leave_student(db: Session, student_id: str):
-    seat = get_student_active_seat(db, student_id)
-    if seat is None:
-        return False
-
-    leave_log = LeaveLog(
-        student_id=student_id,
-        seat_no=seat.seat_no,
-        leave_type="final",
-        status="finished",
-    )
-    db.add(leave_log)
-    seat.status = "available"
-    seat.student_id = None
-    db.commit()
-    return True
-
-
-def get_noise_level(noise_value: int) -> str:
-    if noise_value < 400:
-        return "quiet"
-    if noise_value < 700:
-        return "normal"
-    return "loud"
-
-
-def create_noise_log(db: Session, seat_no: int, noise_value: int):
-    seat = get_seat(db, seat_no)
-    if seat is None:
+def create_noise_log(db: Session, seat_id: str, noise_value: int):
+    """
+    記錄噪音數值
+    """
+    # 檢查座位是否存在
+    seat = get_seat(db, seat_id)
+    if not seat:
         return None
 
-    level = get_noise_level(noise_value)
+    # 判斷是否警告
+    is_warning = noise_value >= NOISE_LIMIT
+
+    # 寫入 noise_logs
     noise_log = NoiseLog(
-        seat_no=seat_no,
-        student_id=seat.student_id,
+        seat_id=seat_id,
         noise_value=noise_value,
-        level=level,
+        is_warning=is_warning,
     )
     db.add(noise_log)
-
-    if level == "loud":
-        seat.status = "warning"
-    elif seat.status == "warning" and seat.student_id:
-        seat.status = "using"
-
     db.commit()
     db.refresh(noise_log)
     return noise_log
 
 
-def list_seats(db: Session):
-    stmt = select(Seat).order_by(Seat.seat_no)
-    return list(db.execute(stmt).scalars().all())
+def leave_seat(db: Session, seat_id: str):
+    """
+    GUI 直接離席
+    """
+    # 查詢該座位
+    seat = get_seat(db, seat_id)
+    if not seat:
+        return None, "座位不存在"
+
+    # 檢查座位狀態是否為 using
+    if seat.status != "using":
+        return None, "座位狀態錯誤"
+
+    student_id = seat.student_id
+
+    # 寫入 leave_logs
+    leave_log = LeaveLog(
+        seat_id=seat_id,
+        student_id=student_id,
+        action="leave",
+    )
+    db.add(leave_log)
+
+    # 更新座位狀態
+    seat.status = "empty"
+    seat.student_id = None
+
+    db.commit()
+    return True, None
 
 
 def get_latest_noise(db: Session):
-    stmt = select(NoiseLog).order_by(NoiseLog.created_at.desc(), NoiseLog.noise_id.desc())
-    return db.execute(stmt).scalars().first()
+    """取得最新噪音紀錄"""
+    stmt = select(NoiseLog).order_by(NoiseLog.created_at.desc()).limit(1)
+    return db.execute(stmt).scalar_one_or_none()
