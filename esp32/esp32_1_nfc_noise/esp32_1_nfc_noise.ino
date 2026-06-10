@@ -3,19 +3,24 @@
 #include <SPI.h>
 #include <MFRC522.h>
 
-const char* WIFI_SSID = "YOUR_WIFI_SSID";
-const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
-const char* API_BASE_URL = "http://192.168.1.100:8000";
+const char* WIFI_SSID = "your_wifi_ssid";
+const char* WIFI_PASSWORD = "your_wifi_password";
+const char* API_BASE_URL = "your_api_base_url";
 
-constexpr uint8_t RST_PIN = 22;
-constexpr uint8_t SS_PIN = 21;
+constexpr uint8_t RST_PIN = 32;
+constexpr uint8_t SS_PIN = 27;
+constexpr uint8_t SCK_PIN = 26;
+constexpr uint8_t MOSI_PIN = 25;
+constexpr uint8_t MISO_PIN = 33;
 constexpr int SOUND_PIN = 34;
 constexpr int SEAT_NO = 1;
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);
 
 String lastUid = "";
+unsigned long lastCardReadAt = 0;
 unsigned long lastNoisePost = 0;
+const unsigned long cardCooldownMs = 3000;
 const unsigned long noiseIntervalMs = 3000;
 
 void connectWiFi() {
@@ -64,7 +69,7 @@ void postJson(const String& path, const String& jsonBody) {
 
 void setup() {
   Serial.begin(115200);
-  SPI.begin();
+  SPI.begin(SCK_PIN, MISO_PIN, MOSI_PIN, SS_PIN);
   mfrc522.PCD_Init();
   pinMode(SOUND_PIN, INPUT);
   connectWiFi();
@@ -73,8 +78,10 @@ void setup() {
 void loop() {
   if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) {
     String uid = readUid();
-    if (uid != lastUid) {
+    unsigned long now = millis();
+    if (uid != lastUid || now - lastCardReadAt > cardCooldownMs) {
       lastUid = uid;
+      lastCardReadAt = now;
       Serial.printf("NFC UID: %s\n", uid.c_str());
       String payload = "{\"nfc_uid\":\"" + uid + "\",\"seat_no\":" + String(SEAT_NO) + "}";
       postJson("/checkin", payload);

@@ -134,6 +134,9 @@ loginForm.addEventListener("submit", async (event) => {
     currentStudent = data.student;
     loginName.textContent = `已登入：${currentStudent.student_id} ${currentStudent.name}`;
     setMessage("登入成功", "success");
+    clearSelectedSeat();
+    fetchSeats();
+    fetchLatestNoise();
   } catch (error) {
     setMessage(error.message || "登入錯誤");
   }

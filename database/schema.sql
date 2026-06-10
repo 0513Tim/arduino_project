@@ -45,9 +45,9 @@ CREATE TABLE IF NOT EXISTS reservations (
 -- Insert test students
 INSERT INTO students (student_id, name, password, uid)
 VALUES
-    ('A001', '王小明', '1234', '04A1B2C3D4'),
-    ('A002', '陳小華', '1234', '04E5F6G7H8'),
-    ('A003', '林小美', '1234', '0411223344')
+    ('A001', '王小明', '1234', 'EB4AA257'),
+    ('A002', '陳小華', '1234', 'B6752807'),
+    ('A003', '林小美', '1234', '1D958B79')
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     password = VALUES(password),

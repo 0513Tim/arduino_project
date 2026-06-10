@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from models import LeaveLog, NoiseLog, Seat, Student
 
 
-NOISE_LIMIT = 700
+NOISE_LIMIT = 150
 
 
 def login_student(db: Session, student_id: str, password: str):

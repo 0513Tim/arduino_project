@@ -94,6 +94,9 @@ def checkin(payload: CheckinRequest, db: Session = Depends(get_db)):
     """
     ESP32 NFC 刷卡報到
     """
+    if not payload.uid or not payload.seat_id:
+        raise HTTPException(status_code=422, detail="uid/nfc_uid and seat_id/seat_no are required")
+
     result, error = crud.checkin_student(db, payload.uid, payload.seat_id)
     if error:
         raise HTTPException(status_code=400, detail=error)
@@ -109,6 +112,9 @@ def upload_noise(payload: NoiseRequest, db: Session = Depends(get_db)):
     """
     ESP32 上傳噪音數值
     """
+    if not payload.seat_id:
+        raise HTTPException(status_code=422, detail="seat_id/seat_no is required")
+
     noise_log = crud.create_noise_log(db, payload.seat_id, payload.noise_value)
     if not noise_log:
         raise HTTPException(status_code=404, detail="座位不存在")
@@ -125,6 +131,9 @@ def leave(payload: LeaveRequest, db: Session = Depends(get_db)):
     """
     GUI 直接離席
     """
+    if not payload.seat_id:
+        raise HTTPException(status_code=422, detail="seat_id/seat_no is required")
+
     success, error = crud.leave_seat(db, payload.seat_id)
     if not success:
         raise HTTPException(status_code=400, detail=error)
@@ -146,3 +155,14 @@ def get_latest_noise(db: Session = Depends(get_db)):
 
     return noise_log
 
+
+@app.get("/noise/latest", response_model=LatestNoiseResponse)
+def get_latest_noise_legacy(db: Session = Depends(get_db)):
+    """
+    舊版相容端點，提供 Node-RED / 舊版 ESP32 說明使用
+    """
+    noise_log = crud.get_latest_noise(db)
+    if not noise_log:
+        raise HTTPException(status_code=404, detail="無噪音資料")
+
+    return noise_log

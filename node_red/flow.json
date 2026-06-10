@@ -1,0 +1,264 @@
+[
+  {
+    "id": "study-room-tab",
+    "type": "tab",
+    "label": "Smart Study Room Dashboard",
+    "disabled": false,
+    "info": ""
+  },
+  {
+    "id": "study-room-ui-tab",
+    "type": "ui_tab",
+    "name": "智慧自習室",
+    "icon": "dashboard",
+    "disabled": false,
+    "hidden": false
+  },
+  {
+    "id": "seat-group",
+    "type": "ui_group",
+    "name": "座位狀態",
+    "tab": "study-room-ui-tab",
+    "order": 1,
+    "disp": true,
+    "width": "12",
+    "collapse": false
+  },
+  {
+    "id": "noise-group",
+    "type": "ui_group",
+    "name": "噪音資訊",
+    "tab": "study-room-ui-tab",
+    "order": 2,
+    "disp": true,
+    "width": "12",
+    "collapse": false
+  },
+  {
+    "id": "warning-group",
+    "type": "ui_group",
+    "name": "警告資訊",
+    "tab": "study-room-ui-tab",
+    "order": 3,
+    "disp": true,
+    "width": "12",
+    "collapse": false
+  },
+  {
+    "id": "inject-seats",
+    "type": "inject",
+    "z": "study-room-tab",
+    "name": "每 5 秒刷新座位",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "5",
+    "once": true,
+    "onceDelay": "0.5",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 160,
+    "y": 100,
+    "wires": [
+      [
+        "request-seats"
+      ]
+    ]
+  },
+  {
+    "id": "request-seats",
+    "type": "http request",
+    "z": "study-room-tab",
+    "name": "GET /seats",
+    "method": "GET",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "http://127.0.0.1:8000/seats",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 380,
+    "y": 100,
+    "wires": [
+      [
+        "format-seats"
+      ]
+    ]
+  },
+  {
+    "id": "format-seats",
+    "type": "function",
+    "z": "study-room-tab",
+    "name": "格式化座位",
+    "func": "let lines = msg.payload.map(\n  seat => `座位 ${seat.seat_id}: ${seat.status} / ${seat.student_id || \"-\"}`\n);\nmsg.payload = lines.join(\"\\n\");\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 600,
+    "y": 100,
+    "wires": [
+      [
+        "ui-seats"
+      ]
+    ]
+  },
+  {
+    "id": "ui-seats",
+    "type": "ui_text",
+    "z": "study-room-tab",
+    "group": "seat-group",
+    "order": 1,
+    "width": "12",
+    "height": "6",
+    "name": "座位狀態文字",
+    "label": "目前座位狀態",
+    "format": "<pre>{{msg.payload}}</pre>",
+    "layout": "row-spread",
+    "className": "",
+    "style": false,
+    "font": "",
+    "fontSize": "",
+    "color": "",
+    "x": 830,
+    "y": 100,
+    "wires": []
+  },
+  {
+    "id": "inject-noise",
+    "type": "inject",
+    "z": "study-room-tab",
+    "name": "每 3 秒刷新噪音",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "3",
+    "once": true,
+    "onceDelay": "1",
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 160,
+    "y": 220,
+    "wires": [
+      [
+        "request-noise"
+      ]
+    ]
+  },
+  {
+    "id": "request-noise",
+    "type": "http request",
+    "z": "study-room-tab",
+    "name": "GET /latest_noise",
+    "method": "GET",
+    "ret": "obj",
+    "paytoqs": "ignore",
+    "url": "http://127.0.0.1:8000/latest_noise",
+    "tls": "",
+    "persist": false,
+    "proxy": "",
+    "insecureHTTPParser": false,
+    "authType": "",
+    "senderr": false,
+    "headers": [],
+    "x": 390,
+    "y": 220,
+    "wires": [
+      [
+        "format-noise",
+        "format-warning"
+      ]
+    ]
+  },
+  {
+    "id": "format-noise",
+    "type": "function",
+    "z": "study-room-tab",
+    "name": "格式化噪音",
+    "func": "msg.payload = `座位 ${msg.payload.seat_id || \"-\"} / 數值 ${msg.payload.noise_value} / ${msg.payload.is_warning ? \"warning\" : \"normal\"}`;\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 610,
+    "y": 200,
+    "wires": [
+      [
+        "ui-noise"
+      ]
+    ]
+  },
+  {
+    "id": "ui-noise",
+    "type": "ui_text",
+    "z": "study-room-tab",
+    "group": "noise-group",
+    "order": 1,
+    "width": "12",
+    "height": "2",
+    "name": "最新噪音文字",
+    "label": "最新噪音",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "style": false,
+    "font": "",
+    "fontSize": "",
+    "color": "",
+    "x": 830,
+    "y": 200,
+    "wires": []
+  },
+  {
+    "id": "format-warning",
+    "type": "function",
+    "z": "study-room-tab",
+    "name": "格式化警告",
+    "func": "msg.payload = msg.payload.is_warning ? \"warning\" : \"normal\";\nreturn msg;",
+    "outputs": 1,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 610,
+    "y": 260,
+    "wires": [
+      [
+        "ui-warning"
+      ]
+    ]
+  },
+  {
+    "id": "ui-warning",
+    "type": "ui_text",
+    "z": "study-room-tab",
+    "group": "warning-group",
+    "order": 1,
+    "width": "12",
+    "height": "2",
+    "name": "警告狀態文字",
+    "label": "警告狀態",
+    "format": "{{msg.payload}}",
+    "layout": "row-spread",
+    "className": "",
+    "style": false,
+    "font": "",
+    "fontSize": "",
+    "color": "",
+    "x": 830,
+    "y": 260,
+    "wires": []
+  }
+]

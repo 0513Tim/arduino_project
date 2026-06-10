@@ -12,15 +12,17 @@ constexpr uint8_t SS_PIN = 21;
 constexpr int SOUND_PIN = 34;
 constexpr int LED_PIN = 2;
 constexpr int SEAT_NO = 2;
-constexpr int WARNING_THRESHOLD = 700;
+constexpr int WARNING_THRESHOLD = 150;
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);
 
 String lastUid = "";
+unsigned long lastCardReadAt = 0;
 unsigned long lastNoisePost = 0;
 unsigned long lastBlinkToggle = 0;
 bool ledState = false;
 int latestNoise = 0;
+const unsigned long cardCooldownMs = 3000;
 const unsigned long noiseIntervalMs = 3000;
 
 void connectWiFi() {
@@ -87,8 +89,10 @@ void setup() {
 void loop() {
   if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) {
     String uid = readUid();
-    if (uid != lastUid) {
+    unsigned long now = millis();
+    if (uid != lastUid || now - lastCardReadAt > cardCooldownMs) {
       lastUid = uid;
+      lastCardReadAt = now;
       Serial.printf("NFC UID: %s\n", uid.c_str());
       String payload = "{\"nfc_uid\":\"" + uid + "\",\"seat_no\":" + String(SEAT_NO) + "}";
       postJson("/checkin", payload);

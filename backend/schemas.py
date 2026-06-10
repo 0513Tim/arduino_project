@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 
 class LoginRequest(BaseModel):
@@ -16,8 +16,18 @@ class LoginResponse(BaseModel):
 
 
 class CheckinRequest(BaseModel):
-    uid: str
-    seat_id: str
+    uid: Optional[str] = None
+    nfc_uid: Optional[str] = None
+    seat_id: Optional[str] = None
+    seat_no: Optional[int] = None
+
+    @model_validator(mode="after")
+    def normalize_fields(self):
+        if not self.uid and self.nfc_uid:
+            self.uid = self.nfc_uid
+        if not self.seat_id and self.seat_no is not None:
+            self.seat_id = f"{int(self.seat_no):02d}"
+        return self
 
 
 class CheckinResponse(BaseModel):
@@ -26,7 +36,14 @@ class CheckinResponse(BaseModel):
 
 
 class LeaveRequest(BaseModel):
-    seat_id: str
+    seat_id: Optional[str] = None
+    seat_no: Optional[int] = None
+
+    @model_validator(mode="after")
+    def normalize_fields(self):
+        if not self.seat_id and self.seat_no is not None:
+            self.seat_id = f"{int(self.seat_no):02d}"
+        return self
 
 
 class BasicResponse(BaseModel):
@@ -35,8 +52,15 @@ class BasicResponse(BaseModel):
 
 
 class NoiseRequest(BaseModel):
-    seat_id: str
+    seat_id: Optional[str] = None
+    seat_no: Optional[int] = None
     noise_value: int
+
+    @model_validator(mode="after")
+    def normalize_fields(self):
+        if not self.seat_id and self.seat_no is not None:
+            self.seat_id = f"{int(self.seat_no):02d}"
+        return self
 
 
 class NoiseResponse(BaseModel):
