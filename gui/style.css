@@ -153,6 +153,11 @@ button:hover {
   font-weight: 600;
 }
 
+.register-hint {
+  margin: 0;
+  color: var(--muted);
+}
+
 .feedback {
   margin: 8px 0 0;
   color: var(--danger);

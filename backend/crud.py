@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -5,6 +7,15 @@ from models import LeaveLog, NoiseLog, Seat, Student
 
 
 NOISE_LIMIT = 150
+latest_uid_scan = {
+    "uid": None,
+    "registered": False,
+    "student_id": None,
+    "name": None,
+    "source": None,
+    "seat_id": None,
+    "scanned_at": None,
+}
 
 
 def login_student(db: Session, student_id: str, password: str):
@@ -22,6 +33,29 @@ def get_student_by_uid(db: Session, uid: str):
     return db.execute(stmt).scalar_one_or_none()
 
 
+def register_student(db: Session, student_id: str, name: str, password: str, uid: str):
+    existing_student = db.execute(
+        select(Student).where(Student.student_id == student_id)
+    ).scalar_one_or_none()
+    if existing_student:
+        return None, "學號已存在"
+
+    existing_uid = get_student_by_uid(db, uid)
+    if existing_uid:
+        return None, "UID 已被綁定"
+
+    student = Student(
+        student_id=student_id,
+        name=name,
+        password=password,
+        uid=uid,
+    )
+    db.add(student)
+    db.commit()
+    db.refresh(student)
+    return student, None
+
+
 def get_seat(db: Session, seat_id: str):
     """取得座位資訊"""
     return db.get(Seat, seat_id)
@@ -37,6 +71,8 @@ def checkin_student(db: Session, uid: str, seat_id: str):
     """
     ESP32 NFC 刷卡報到流程
     """
+    remember_latest_uid(uid=uid, source="checkin", seat_id=seat_id)
+
     # 用 uid 查 students
     student = get_student_by_uid(db, uid)
     if not student:
@@ -119,3 +155,37 @@ def get_latest_noise(db: Session):
     """取得最新噪音紀錄"""
     stmt = select(NoiseLog).order_by(NoiseLog.created_at.desc()).limit(1)
     return db.execute(stmt).scalar_one_or_none()
+
+
+def remember_latest_uid(
+    uid: str,
+    source: str | None = None,
+    seat_id: str | None = None,
+    registered: bool = False,
+    student_id: str | None = None,
+    name: str | None = None,
+):
+    latest_uid_scan["uid"] = uid
+    latest_uid_scan["registered"] = registered
+    latest_uid_scan["student_id"] = student_id
+    latest_uid_scan["name"] = name
+    latest_uid_scan["source"] = source
+    latest_uid_scan["seat_id"] = seat_id
+    latest_uid_scan["scanned_at"] = datetime.now()
+    return latest_uid_scan.copy()
+
+
+def get_latest_uid():
+    if not latest_uid_scan["uid"]:
+        return None
+    return latest_uid_scan.copy()
+
+
+def clear_latest_uid():
+    latest_uid_scan["uid"] = None
+    latest_uid_scan["registered"] = False
+    latest_uid_scan["student_id"] = None
+    latest_uid_scan["name"] = None
+    latest_uid_scan["source"] = None
+    latest_uid_scan["seat_id"] = None
+    latest_uid_scan["scanned_at"] = None

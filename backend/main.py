@@ -12,11 +12,15 @@ from schemas import (
     CheckinRequest,
     CheckinResponse,
     LatestNoiseResponse,
+    LatestUidResponse,
     LeaveRequest,
     LoginRequest,
     LoginResponse,
     NoiseRequest,
     NoiseResponse,
+    RegisterRequest,
+    RegisterResponse,
+    ScanUidRequest,
     SeatResponse,
 )
 
@@ -76,6 +80,37 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
         "student": {
             "student_id": student.student_id,
             "name": student.name,
+        },
+    }
+
+
+@app.post(
+    "/register",
+    response_model=RegisterResponse,
+    response_model_exclude_none=True,
+)
+def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+    student, error = crud.register_student(
+        db,
+        student_id=payload.student_id,
+        name=payload.name,
+        password=payload.password,
+        uid=payload.uid,
+    )
+    if error:
+        raise HTTPException(status_code=400, detail=error)
+
+    latest = crud.get_latest_uid()
+    if latest and latest["uid"] == student.uid:
+        crud.clear_latest_uid()
+
+    return {
+        "success": True,
+        "message": "註冊成功",
+        "student": {
+            "student_id": student.student_id,
+            "name": student.name,
+            "uid": student.uid,
         },
     }
 
@@ -154,6 +189,31 @@ def get_latest_noise(db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="無噪音資料")
 
     return noise_log
+
+
+@app.post("/scan_uid", response_model=LatestUidResponse)
+def scan_uid(payload: ScanUidRequest, db: Session = Depends(get_db)):
+    if not payload.uid:
+        raise HTTPException(status_code=422, detail="uid/nfc_uid is required")
+
+    student = crud.get_student_by_uid(db, payload.uid)
+    latest = crud.remember_latest_uid(
+        uid=payload.uid,
+        source=payload.source or "scanner",
+        seat_id=payload.seat_id,
+        registered=student is not None,
+        student_id=student.student_id if student else None,
+        name=student.name if student else None,
+    )
+    return latest
+
+
+@app.get("/latest_uid", response_model=LatestUidResponse)
+def get_latest_uid():
+    latest = crud.get_latest_uid()
+    if not latest:
+        raise HTTPException(status_code=404, detail="尚無刷卡 UID")
+    return latest
 
 
 @app.get("/noise/latest", response_model=LatestNoiseResponse)

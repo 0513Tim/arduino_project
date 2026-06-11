@@ -7,6 +7,13 @@ const studentIdInput = document.querySelector("#student-id");
 const passwordInput = document.querySelector("#password");
 const loginMessage = document.querySelector("#login-message");
 const loginName = document.querySelector("#login-name");
+const registerForm = document.querySelector("#register-form");
+const registerStudentIdInput = document.querySelector("#register-student-id");
+const registerNameInput = document.querySelector("#register-name");
+const registerPasswordInput = document.querySelector("#register-password");
+const registerUidInput = document.querySelector("#register-uid");
+const registerMessage = document.querySelector("#register-message");
+const loadLatestUidButton = document.querySelector("#load-latest-uid");
 const seatGrid = document.querySelector("#seat-grid");
 const selectedSeatLabel = document.querySelector("#selected-seat");
 const noiseSeat = document.querySelector("#noise-seat");
@@ -26,6 +33,11 @@ const STATUS_LABELS = {
 function setMessage(text, type = "error") {
   loginMessage.textContent = text;
   loginMessage.style.color = type === "success" ? "#16a34a" : "#dc2626";
+}
+
+function setRegisterMessage(text, type = "error") {
+  registerMessage.textContent = text;
+  registerMessage.style.color = type === "success" ? "#16a34a" : "#dc2626";
 }
 
 function updateSelectedSeat(seatId) {
@@ -103,6 +115,15 @@ async function fetchLatestNoise() {
   }
 }
 
+async function fetchLatestUid() {
+  const response = await fetch(`${API_BASE_URL}/latest_uid`);
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || "尚無最近刷卡 UID");
+  }
+  return response.json();
+}
+
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   setMessage("");
@@ -139,6 +160,61 @@ loginForm.addEventListener("submit", async (event) => {
     fetchLatestNoise();
   } catch (error) {
     setMessage(error.message || "登入錯誤");
+  }
+});
+
+registerForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setRegisterMessage("");
+
+  const payload = {
+    student_id: registerStudentIdInput.value.trim(),
+    name: registerNameInput.value.trim(),
+    password: registerPasswordInput.value.trim(),
+    uid: registerUidInput.value.trim(),
+  };
+
+  if (!payload.student_id || !payload.name || !payload.password || !payload.uid) {
+    setRegisterMessage("請完整填寫註冊資料");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+
+    if (!response.ok || data.success === false) {
+      setRegisterMessage(data.detail || data.message || "註冊失敗");
+      return;
+    }
+
+    setRegisterMessage(`註冊成功：${payload.student_id}`, "success");
+    registerForm.reset();
+  } catch (error) {
+    setRegisterMessage(error.message || "註冊錯誤");
+  }
+});
+
+loadLatestUidButton.addEventListener("click", async () => {
+  setRegisterMessage("");
+  try {
+    const latest = await fetchLatestUid();
+    registerUidInput.value = latest.uid;
+    if (latest.registered) {
+      setRegisterMessage(
+        `已帶入最近 UID：${latest.uid}，此卡已註冊給 ${latest.student_id} ${latest.name}`,
+        "error"
+      );
+      return;
+    }
+
+    setRegisterMessage(`已帶入最近 UID：${latest.uid}，此卡尚未註冊`, "success");
+  } catch (error) {
+    setRegisterMessage(error.message || "無法取得最近 UID");
   }
 });
 

@@ -13,12 +13,7 @@
         <p class="app-tag">Smart Study Room System</p>
         <h1>智慧自習室系統</h1>
       </div>
-      <div class="hint-card">
-        <p class="hint-title">測試帳號</p>
-        <p>A001 / 1234</p>
-        <p>A002 / 1234</p>
-        <p>A003 / 1234</p>
-      </div>
+      
     </header>
 
     <main>
@@ -37,6 +32,36 @@
         </form>
         <p id="login-message" class="feedback"></p>
         <p id="login-name" class="login-name"></p>
+      </section>
+
+      <section class="card login-card">
+        <div class="section-header">
+          <div>
+            <h2>註冊帳號</h2>
+            <p class="register-hint">先到櫃檯刷卡，再按下方按鈕自動帶入最近 UID</p>
+          </div>
+          <button id="load-latest-uid" class="secondary-btn">帶入最近 UID</button>
+        </div>
+        <form id="register-form">
+          <label>
+            學號
+            <input type="text" id="register-student-id" placeholder="A004" required />
+          </label>
+          <label>
+            姓名
+            <input type="text" id="register-name" placeholder="王小明" required />
+          </label>
+          <label>
+            密碼
+            <input type="password" id="register-password" placeholder="1234" required />
+          </label>
+          <label>
+            UID
+            <input type="text" id="register-uid" placeholder="最近刷到的 UID" required />
+          </label>
+          <button type="submit" class="primary-btn">註冊</button>
+        </form>
+        <p id="register-message" class="feedback"></p>
       </section>
 
       <section class="card seat-card">
@@ -65,16 +90,7 @@
         </div>
       </section>
 
-      <section class="card api-card">
-        <h2>API 使用說明</h2>
-        <p>後端 API Base URL：<strong>http://127.0.0.1:8000</strong></p>
-        <ul>
-          <li>POST /login</li>
-          <li>GET /seats</li>
-          <li>POST /leave</li>
-          <li>GET /latest_noise</li>
-        </ul>
-      </section>
+      
     </main>
   </div>
 
