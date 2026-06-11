@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -7,6 +7,7 @@ from models import LeaveLog, NoiseLog, Seat, Student
 
 
 NOISE_LIMIT = 150
+SEAT_TIMEOUT_HOURS = 8
 latest_uid_scan = {
     "uid": None,
     "registered": False,
@@ -61,8 +62,36 @@ def get_seat(db: Session, seat_id: str):
     return db.get(Seat, seat_id)
 
 
+def release_expired_seats(db: Session):
+    """超過 8 小時未釋放的座位自動回收"""
+    timeout_before = datetime.now() - timedelta(hours=SEAT_TIMEOUT_HOURS)
+    stmt = select(Seat).where(
+        Seat.status == "using",
+        Seat.updated_at.is_not(None),
+        Seat.updated_at < timeout_before,
+    )
+    expired_seats = list(db.execute(stmt).scalars().all())
+
+    if not expired_seats:
+        return []
+
+    for seat in expired_seats:
+        leave_log = LeaveLog(
+            seat_id=seat.seat_id,
+            student_id=seat.student_id,
+            action="timeout",
+        )
+        db.add(leave_log)
+        seat.status = "empty"
+        seat.student_id = None
+
+    db.commit()
+    return expired_seats
+
+
 def list_all_seats(db: Session):
     """列出所有座位，依 seat_id 排序"""
+    release_expired_seats(db)
     stmt = select(Seat).order_by(Seat.seat_id)
     return db.execute(stmt).scalars().all()
 
@@ -71,6 +100,7 @@ def checkin_student(db: Session, uid: str, seat_id: str):
     """
     ESP32 NFC 刷卡報到流程
     """
+    release_expired_seats(db)
     remember_latest_uid(uid=uid, source="checkin", seat_id=seat_id)
 
     # 用 uid 查 students
@@ -100,6 +130,7 @@ def create_noise_log(db: Session, seat_id: str, noise_value: int):
     """
     記錄噪音數值
     """
+    release_expired_seats(db)
     # 檢查座位是否存在
     seat = get_seat(db, seat_id)
     if not seat:
@@ -124,6 +155,7 @@ def leave_seat(db: Session, seat_id: str):
     """
     GUI 直接離席
     """
+    release_expired_seats(db)
     # 查詢該座位
     seat = get_seat(db, seat_id)
     if not seat:
