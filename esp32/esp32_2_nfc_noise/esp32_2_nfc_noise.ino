@@ -3,9 +3,9 @@
 #include <SPI.h>
 #include <MFRC522.h>
 
-const char* WIFI_SSID = "黃議廷的iPhone";
-const char* WIFI_PASSWORD = "2lgiooaL";
-const char* API_BASE_URL = "http://172.20.10.4:8000";
+const char* WIFI_SSID = "your_ssid";
+const char* WIFI_PASSWORD = "your_password";
+const char* API_BASE_URL = "http://xxx.xxx.xxx.xxx:8000";
 
 constexpr uint8_t RST_PIN = 32;
 constexpr uint8_t SS_PIN = 27;
